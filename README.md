@@ -3,7 +3,7 @@ Configuration files to build the Einstein Toolkit on the Leonardo cluster, at CI
 
 The initial configuration files were provided via email by Bruno Giacomazzo. Recently, they were also added to SimFactory's  machine database ([see related commit](https://bitbucket.org/simfactory/simfactory2/commits/0d4011bf554ee695f9543e048ae9ff5edc5b5c98)).
 
-I needed to update the libraries' paths to handle recent software updates in Leonardo (related to the `Spack` version). I also added comments explaining the different commands and options.
+I needed to update the libraries' paths to handle recent software updates in Leonardo (related to the `Spack` package manager version). I also added comments explaining the different commands and options.
 
 ## Building the Einstein Toolkit
 
