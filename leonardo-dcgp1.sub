@@ -1,0 +1,95 @@
+#! /bin/bash
+
+# job name
+#SBATCH --job-name @SHORT_SIMULATION_NAME@
+
+
+# direct standard output (stdout) to a file stored in the run directory
+#SBATCH --output=@RUNDIR@/@SIMULATION_NAME@.out
+
+
+# direct standard error (stderr) to a file stored in the run directory
+#SBATCH --error=@RUNDIR@/@SIMULATION_NAME@.err
+
+
+# project account to charge cluster resources used 
+# (either specify the <project_account> or set to @ALLOCATION@ and set at runtime)
+#SBATCH --account=CNHPC_1479290_0 
+
+
+# notify user by email when certain events occur
+#SBATCH --mail-type=ALL
+
+
+# specify email address to send notifications to
+#SBATCH --mail-user=@EMAIL@
+
+
+# specify cluster partition to use 
+# (either specify a <partition_name> or set to @QUEUE@ and set at runtime)
+#SBATCH --partition dcgp_usr_prod
+
+
+# cluster partition's walltime limit
+#SBATCH --time @WALLTIME@
+
+
+# memory per node (why 494000MB though?)
+#SBATCH --mem 494000MB
+
+
+# number of nodes requested
+#SBATCH --nodes @NODES@                 
+
+
+# number of parallel tasks (i.e. MPI processes typically) per node
+#SBATCH --ntasks-per-node @(@NUM_PROCS@//@NODES@)@  
+
+
+# number of OpenMP threads (i.e. processors/cores for most of our purposes) per task (i.e. per MPI process)
+#SBATCH --cpus-per-task @NUM_THREADS@
+
+
+# IMPORTANT NOTE:
+#   When invoking '.\simfactory/bin/sim':
+#   '--cores': total number of threads
+#   '--procs': total number of threads (yes, they are the same)
+#   '--ppn-used' = number of threads per node,
+#       i.e. the number of processors per node that should actually be used, 
+#       allowing under-using nodes even if the queueing system does not allow it.
+#   '--ppn': processors per node
+# 
+# There is some inconsistency in terminology between:
+# - SimFactory command line options, e.g. '--cores', '--procs', '--ppn' 
+# - SimFactory @FOO@ macros
+# - the MPI/OpenMP "processes and threads" concept and
+# - the SimFactory documentation 
+#   - https://docs.einsteintoolkit.org/et-docs/Simulation_Factory_Advanced_Tutorial#Submitting_a_Simulation
+#   - https://simfactory.bitbucket.io/simfactory2/userguide/processterminology.html
+#
+# Fortunately, the SimFactory @FOO@ macros seem to align with the SLURM and 
+# MPI/OpenMP conventions about processes and threads. However, caution is needed.
+# 
+# E.g. the abbreviation 'PROCS' can mean either 'processes' or 'processors'.
+# In addition, 'processors' and 'cores' are often used interchangeably to mean
+# 'individual processing units', which can be confusing (a processor typically
+# has multiple cores).
+
+
+# Check if the job is part of a chain:
+#   If it is, start it only after the previous job in the chain has finished.
+#   See also the SLURM documentation for the -d, --dependency option:
+#   - https://slurm.schedmd.com/sbatch.html
+#   - afterany = start after the previous job has finished, 
+#                regardless of its exit status (success, failure, termination)
+#   - afterok = start after the previous job has finished successfully (exit status 0)
+#SBATCH @("@CHAINED_JOB_ID@" != "" ? "-d afterany:@CHAINED_JOB_ID@" : "")@      
+
+
+# included (possibly) as precaution to allow for allocation of resources
+sleep 10 
+
+cd @SOURCEDIR@
+
+# standard simfactory run command (see simfactory/README_FIRST.txt)
+@SIMFACTORY@ run @SIMULATION_NAME@ --machine=@MACHINE@ --restart-id=@RESTART_ID@ @FROM_RESTART_COMMAND@ 

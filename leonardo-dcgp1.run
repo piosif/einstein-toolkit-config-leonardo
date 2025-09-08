@@ -1,0 +1,78 @@
+#! /bin/bash
+
+echo "Preparing:"
+
+# Print each command before executing it (useful for debugging)
+set -x
+
+# Script will abort if any command returns an error (non-zero exit status)
+# (useful to detect errors early)
+set -e
+
+cd @RUNDIR@-active
+
+echo "Checking:"
+pwd
+hostname
+date
+
+echo "Environment:"
+# Set various environment variables and make them available 
+# to child processes started by this script
+#     - 'GMON_OUT_PREFIX': sets the prefix of the GNU gprofiler 
+#       'gprof' output files
+export GMON_OUT_PREFIX=gmon.out 
+export OMP_NUM_THREADS=@NUM_THREADS@
+export CACTUS_NUM_PROCS=@NUM_PROCS@
+export CACTUS_NUM_THREADS=@NUM_THREADS@
+# Capture environment variables, sort them, and save to a file for later reference
+env | sort > SIMFACTORY/ENVIRONMENT
+
+# Why not include these variables in the file environment-capturing file above?
+export MPI_PROCESS_PER_NODE=@(1.0*@NUM_PROCS@/@NODES@)@
+export MPI_PROCESS=@NUM_PROCS@
+
+echo "Job setup:"
+echo "   Allocated:"
+echo "      Nodes:                      @NODES@"
+echo "      Cores per node:             @PPN@"
+echo "   SLURM setting"
+echo "      SLURM_NNODES :  ${SLURM_NNODES}"
+echo "      SLURM_NPROCS :  ${SLURM_NPROCS}"
+echo "      SLURM_NTASKS :  ${SLURM_NTASKS}"
+echo "      SLURM_CPUS_ON_NODE  :  ${SLURM_CPUS_ON_NODE}"
+echo "      SLURM_CPUS_PER_TASK :  ${SLURM_CPUS_PER_TASK}"
+echo "      SLURM_TASKS_PER_NODE:  ${SLURM_TASKS_PER_NODE}"
+echo "   Running:"
+echo "      MPI processes:              @NUM_PROCS@"
+echo "      OpenMP threads per process: @NUM_THREADS@"
+echo "      MPI processes per node:     @(1.0*@NUM_PROCS@/@NODES@)@"
+echo "      OpenMP threads per core:    @(1.0*(@NUM_PROCS@*@NUM_THREADS@)/(@NODES@*@PPN@))@"
+echo "      OpenMP threads per node:    @PPN_USED@"
+
+# This environment variable is related to the Intel MPI library
+# default is 0, higher values increase debugging verbosity.
+# Since this setup uses OpenMPI, it will probably not have any effect.
+export I_MPI_DEBUG=5
+
+# Remove any OS limit on the core dump file size
+# (related to the 'decfort_dump_flag' environment variable below)
+ulimit -c unlimited
+
+# Environment variable related to the Intel Fortran compiler
+# Creates a core dump file in the case of any severe Intel Fortran runtime error
+# Since this setup uses GCC, it will probably not have any effect.
+export decfort_dump_flag=TRUE
+
+echo "Starting:"
+
+# Flag -L, --logging-level <n>: sets the logging level to n.
+# (checked via running this command'./cactus_sim --help' 
+# executable located in '$HOME/Cactus/exe/')
+time srun @EXECUTABLE@ -L 3 @PARFILE@
+
+echo "Stopping:"
+date
+
+echo "Done."
+
